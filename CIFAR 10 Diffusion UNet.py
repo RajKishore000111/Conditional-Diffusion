@@ -29,9 +29,8 @@ def add_noise(x0, t, noise):
 
 # 2. Defining the model
 
-# --------------------------------------------------
 # Residual block with time and class conditioning
-# --------------------------------------------------
+
 
 class ResBlock(nn.Module):
 
@@ -91,9 +90,8 @@ class ResBlock(nn.Module):
         return F.relu(h)
 
 
-# --------------------------------------------------
+
 # U-Net Denoiser
-# --------------------------------------------------
 
 class SimpleDenoiser(nn.Module):
 
@@ -101,9 +99,9 @@ class SimpleDenoiser(nn.Module):
 
         super().__init__()
 
-        # ------------------------------------------
+        
         # TIME AND CLASS EMBEDDINGS
-        # ------------------------------------------
+        
 
         self.time_embed = nn.Embedding(
             TIMESTEPS, channels
@@ -113,16 +111,16 @@ class SimpleDenoiser(nn.Module):
             num_classes, channels
         )
 
-        # ------------------------------------------
+        
         # ENCODER
-        # ------------------------------------------
+        
 
-        # Input image: 3 -> channels
+        # Input image
         self.enc1 = ResBlock(
             3, channels, channels
         )
 
-        # Downsample: channels -> 2*channels
+        # Downsample: 
         self.down1 = nn.Conv2d(
             channels, channels * 2,
             kernel_size=3, stride=2, padding=1
@@ -132,15 +130,15 @@ class SimpleDenoiser(nn.Module):
             channels * 2, channels * 2, channels
         )
 
-        # Downsample: 2*channels -> 4*channels
+        # Downsample
         self.down2 = nn.Conv2d(
             channels * 2, channels * 4,
             kernel_size=3, stride=2, padding=1
         )
 
-        # ------------------------------------------
+       
         # BOTTLENECK
-        # ------------------------------------------
+        
 
         self.mid1 = ResBlock(
             channels * 4, channels * 4, channels
@@ -150,33 +148,33 @@ class SimpleDenoiser(nn.Module):
             channels * 4, channels * 4, channels
         )
 
-        # ------------------------------------------
+        
         # DECODER
-        # ------------------------------------------
+        
 
-        # Upsample: 4*channels -> 2*channels
+        # Upsample
         self.up2 = nn.Conv2d(
             channels * 4, channels * 2, 3, padding=1
         )
 
-        # Concatenate with encoder's second feature map
+        
         self.dec2 = ResBlock(
             channels * 4, channels * 2, channels
         )
 
-        # Upsample: 2*channels -> channels
+        # Upsample: 
         self.up1 = nn.Conv2d(
             channels * 2, channels, 3, padding=1
         )
 
-        # Concatenate with encoder's first feature map
+        
         self.dec1 = ResBlock(
             channels * 2, channels, channels
         )
 
-        # ------------------------------------------
+        
         # OUTPUT
-        # ------------------------------------------
+       
 
         self.conv_out = nn.Conv2d(
             channels, 3, 3, padding=1
@@ -184,9 +182,9 @@ class SimpleDenoiser(nn.Module):
 
     def forward(self, x, t, y):
 
-        # ------------------------------------------
+        
         # EMBEDDINGS
-        # ------------------------------------------
+        
 
         # Combine timestep and class information
         temb = self.time_embed(t)
@@ -194,9 +192,9 @@ class SimpleDenoiser(nn.Module):
 
         emb = temb + cemb
 
-        # ------------------------------------------
+        
         # ENCODER
-        # ------------------------------------------
+        
 
         # First encoder level
         e1 = self.enc1(x, emb)
@@ -210,16 +208,16 @@ class SimpleDenoiser(nn.Module):
         # Downsample again
         d2 = self.down2(e2)
 
-        # ------------------------------------------
+        
         # BOTTLENECK
-        # ------------------------------------------
+        
 
         mid = self.mid1(d2, emb)
         mid = self.mid2(mid, emb)
 
-        # ------------------------------------------
+        
         # DECODER
-        # ------------------------------------------
+        
 
         # Upsample to the second encoder's resolution
         u2 = F.interpolate(
@@ -249,9 +247,9 @@ class SimpleDenoiser(nn.Module):
 
         u1 = self.dec1(u1, emb)
 
-        # ------------------------------------------
+        
         # PREDICT NOISE
-        # ------------------------------------------
+        
 
         return self.conv_out(u1)
 
